@@ -238,13 +238,13 @@ class TWI
     //
 
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
-    bool Write(const byte target_address, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
+    bool Write(const byte target_address, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
     {
       return Transaction(Sequences::BurstWrite, target_address, 0, 0, buffer, count, mode);
     }
 
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
-    bool Write(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
+    bool Write(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
     {
       return Transaction(Sequences::BurstWrite, target_address, internal_address, internal_address_size, buffer, count, mode);
     }
@@ -278,20 +278,20 @@ class TWI
     }
 
     // BurstRead: Tx Start, Tx TargetAddress+W, Rx Ack, Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
-    bool Read(const byte target_address, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
+    bool Read(const byte target_address, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
     {
       return Transaction(Sequences::BurstRead, target_address, 0, 0, buffer, count, mode);
     }
 
     // BurstRead: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
-    bool Read(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
+    bool Read(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
     {
       return Transaction(Sequences::BurstRead, target_address, internal_address, internal_address_size, buffer, count, mode);
     }
 
   private:
 
-    bool Transaction(const Sequences sequence, const byte target_address, const byte internal_address, const byte internal_address_size, const byte *buffer, const byte count, const Modes mode = Modes::Continue);
+    bool Transaction(const Sequences sequence, const byte target_address, const byte internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue);
 
   public:
 
