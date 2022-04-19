@@ -58,76 +58,76 @@
 
 class TWI
 {
-private:
+  private:
 
     enum class Status : byte
     {
-        //
-        // Table 22-7. Miscelleaneous States
-        //
-        x00_BusError = 0x00,
-        xF8_Complete = 0xF8,
+      //
+      // Table 22-7. Miscelleaneous States
+      //
+      x00_BusError = 0x00,
+      xF8_Complete = 0xF8,
 
-        //
-        // Common status codes:
-        //  Table 22-3. Status Codes for Controller Transmitter Mode
-        //  Table 22-4. Status Codes for Controller Receiver Mode
-        //
-        x08_StartTransmitted = 0x08,
-        x10_RepeatedStartTransmitted = 0x10,
-        x38_ArbitrationLost = 0x38,
+      //
+      // Common status codes:
+      //  Table 22-3. Status Codes for Controller Transmitter Mode
+      //  Table 22-4. Status Codes for Controller Receiver Mode
+      //
+      x08_StartTransmitted = 0x08,
+      x10_RepeatedStartTransmitted = 0x10,
+      x38_ArbitrationLost = 0x38,
 
-        //
-        // Table 22-3. Status Codes for Controller Transmitter Mode
-        //
-        x18_TargetAddressWriteTransmittedAckReceived = 0x18,
-        x20_TargetAddressWriteTransmittedNotAckReceived = 0x20,
-        x28_DataByteTransmittedAckReceived = 0x28,
-        x30_DataByteTransmittedNotAckReceived = 0x30,
+      //
+      // Table 22-3. Status Codes for Controller Transmitter Mode
+      //
+      x18_TargetAddressWriteTransmittedAckReceived = 0x18,
+      x20_TargetAddressWriteTransmittedNotAckReceived = 0x20,
+      x28_DataByteTransmittedAckReceived = 0x28,
+      x30_DataByteTransmittedNotAckReceived = 0x30,
 
-        //
-        // Table 22-4. Status Codes for Controller Receiver Mode
-        //
-        x40_TargetAddressReadTransmittedAckReceived = 0x40,
-        x48_TargetAddressReadTransmittedNotAckReceived = 0x48,
-        x50_DateByteReceivedAckReturned = 0x50,
-        x58_DataByteReceivedNotAckReturned = 0x58
+      //
+      // Table 22-4. Status Codes for Controller Receiver Mode
+      //
+      x40_TargetAddressReadTransmittedAckReceived = 0x40,
+      x48_TargetAddressReadTransmittedNotAckReceived = 0x48,
+      x50_DateByteReceivedAckReturned = 0x50,
+      x58_DataByteReceivedNotAckReturned = 0x58
     };
 
-public:
+  public:
 
     enum class Modes : bool
     {
-        Continue,  // Returns to the caller after starting the transaction. The TWI ISR continues the transaction to completion asynchronously.
-        Wait       // Conducts the transaction synchronously without the TWI ISR by polling the TWINT flag.
+      Continue,  // Returns to the caller after starting the transaction. The TWI ISR continues the transaction to completion asynchronously.
+      Wait       // Conducts the transaction synchronously without the TWI ISR by polling the TWINT flag.
     };
 
-private:
+  private:
 
     enum class Sequences : byte
     {
-        BurstWrite,  // Tx Start, Tx TargetAddress+W, Rx Ack, [Optional: Tx internal address, Rx Ack,] (Tx data and Rx Ack) x N, Tx Stop.
-        BurstRead    // Tx Start, Tx TargetAddress+W, Rx Ack, [Optional: Tx internal address, Rx Ack,] Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
+      BurstWrite,  // Tx Start, Tx TargetAddress+W, Rx Ack, [Optional: Tx internal address, Rx Ack,] (Tx data and Rx Ack) x N, Tx Stop.
+      BurstRead    // Tx Start, Tx TargetAddress+W, Rx Ack, [Optional: Tx internal address, Rx Ack,] Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
     };
 
-public:
+  public:
 
     // State machine feedback to the caller.
     enum class States : byte
     {
-        Ready,
-        Busy
+      Ready,
+      Busy
     };
 
     // Result of sequence.
     enum class Results : byte
     {
-        Unknown,
-        Timeout,
-        Success
+      Unknown,
+      Timeout,
+      Success
     };
 
-private:
+  private:
 
     static Sequences _sequence;
 
@@ -170,7 +170,7 @@ private:
 
     static bool _smbus_mode;
 
-public:
+  public:
 
     TWI()
     {
@@ -186,50 +186,50 @@ public:
 
     States GetState()
     {
-        // Get the progress of the state machine.
-        cli();
-        States s = _state;
-        sei();
-        return s;
+      // Get the progress of the state machine.
+      cli();
+      States s = _state;
+      sei();
+      return s;
     }
 
     Results GetResult()
     {
-        // Get the result of the state machine.
-        cli();
-        Results r = _result;
-        sei();
-        return r;
+      // Get the result of the state machine.
+      cli();
+      Results r = _result;
+      sei();
+      return r;
     }
 
     bool IsComplete()
     {
-        cli();
-        States s = _state;
-        Results r = _result;
-        sei();
-        bool complete = s == States::Ready && (r == Results::Success || r == Results::Timeout);
-        return complete;
+      cli();
+      States s = _state;
+      Results r = _result;
+      sei();
+      bool complete = s == States::Ready && (r == Results::Success || r == Results::Timeout);
+      return complete;
     }
 
     bool IsReady()
     {
-        cli();
-        States s = _state;
-        sei();
-        return s == States::Ready;
+      cli();
+      States s = _state;
+      sei();
+      return s == States::Ready;
     }
 
     bool IsSuccess()
     {
-        cli();
-        States s = _state;
-        Results r = _result;
-        sei();
-        return s == States::Ready && r == Results::Success;
+      cli();
+      States s = _state;
+      Results r = _result;
+      sei();
+      return s == States::Ready && r == Results::Success;
     }
 
-public:
+  public:
 
     //
     // Transaction functions for burst write and burst read:
@@ -240,60 +240,60 @@ public:
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
     bool Write(const byte target_address, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
     {
-        return Transaction(Sequences::BurstWrite, target_address, 0, 0, buffer, count, mode);
+      return Transaction(Sequences::BurstWrite, target_address, 0, 0, buffer, count, mode);
     }
 
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
-    bool Write(const byte target_address, const byte *buffer, const byte count, const uint32_t internal_address, const byte internal_address_size, const Modes mode = Modes::Continue)
+    bool Write(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
     {
-        return Transaction(Sequences::BurstWrite, target_address, internal_address, internal_address_size, buffer, count, mode);
+      return Transaction(Sequences::BurstWrite, target_address, internal_address, internal_address_size, buffer, count, mode);
     }
 
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
     bool Write(const byte target_address, const byte data, const Modes mode = Modes::Continue)
     {
-        cli();
-        States s = _state;
-        sei();
-        if (s == States::Busy)
-        {
-            return false;
-        }
-        _data_byte = data;
-        return Transaction(Sequences::BurstWrite, target_address, 0, 0, &_data_byte, 1, mode);
+      cli();
+      States s = _state;
+      sei();
+      if (s == States::Busy)
+      {
+        return false;
+      }
+      _data_byte = data;
+      return Transaction(Sequences::BurstWrite, target_address, 0, 0, &_data_byte, 1, mode);
     }
 
-     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
+    // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
     bool Write(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte data, const Modes mode = Modes::Continue)
     {
-        cli();
-        States s = _state;
-        sei();
-        if (s == States::Busy)
-        {
-            return false;
-        }
-        _data_byte = data;
-        return Transaction(Sequences::BurstWrite, target_address, internal_address, internal_address_size, &_data_byte, 1, mode);
+      cli();
+      States s = _state;
+      sei();
+      if (s == States::Busy)
+      {
+        return false;
+      }
+      _data_byte = data;
+      return Transaction(Sequences::BurstWrite, target_address, internal_address, internal_address_size, &_data_byte, 1, mode);
     }
 
     // BurstRead: Tx Start, Tx TargetAddress+W, Rx Ack, Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
     bool Read(const byte target_address, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
     {
-        return Transaction(Sequences::BurstRead, target_address, 0, 0, buffer, count, mode);
+      return Transaction(Sequences::BurstRead, target_address, 0, 0, buffer, count, mode);
     }
 
     // BurstRead: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
     bool Read(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
     {
-        return Transaction(Sequences::BurstRead, target_address, internal_address, internal_address_size, buffer, count, mode);
+      return Transaction(Sequences::BurstRead, target_address, internal_address, internal_address_size, buffer, count, mode);
     }
 
-private:
+  private:
 
     bool Transaction(const Sequences sequence, const byte target_address, const byte internal_address, const byte internal_address_size, const byte *buffer, const byte count, const Modes mode = Modes::Continue);
 
-public:
+  public:
 
     //
     // Building-block functions that enable the creation of custom sequences.
@@ -308,337 +308,337 @@ public:
     void SendStop();
     void ReleaseBus();
 
-private:
+  private:
 
     static void HandleTimeout()
     {
-        // Save bitrate and address settings.
-        uint8_t previous_TWBR = TWBR;
-        uint8_t previous_TWAR = TWAR;
+      // Save bitrate and address settings.
+      uint8_t previous_TWBR = TWBR;
+      uint8_t previous_TWAR = TWAR;
 
-        // Disable TWI ACK, TWI module and TWI interrupt.
-        TWCR &= ~((1 << TWEA) | (1 << TWEN) | (1 << TWIE));
+      // Disable TWI ACK, TWI module and TWI interrupt.
+      TWCR &= ~((1 << TWEA) | (1 << TWEN) | (1 << TWIE));
 
-        // Activate internal pullups for TWI.
-        pinMode(SDA, INPUT_PULLUP);
-        pinMode(SCL, INPUT_PULLUP);
+      // Activate internal pullups for TWI.
+      pinMode(SDA, INPUT_PULLUP);
+      pinMode(SCL, INPUT_PULLUP);
 
-        // Restore the previous bitrate and address settings.
-        TWAR = previous_TWAR;
-        TWBR = previous_TWBR;
+      // Restore the previous bitrate and address settings.
+      TWAR = previous_TWAR;
+      TWBR = previous_TWBR;
 
-        // Enable TWI module and TWI interrupt.
-        TWCR = (1 << TWEN) | (_use_isr << TWIE);
-        //TWCR = (1 << TWEA) | (1 << TWEN) | (_use_isr << TWIE);  // For Target Receiver mode and Target Transmitter mode.
+      // Enable TWI module and TWI interrupt.
+      TWCR = (1 << TWEN) | (_use_isr << TWIE);
+      //TWCR = (1 << TWEA) | (1 << TWEN) | (_use_isr << TWIE);  // For Target Receiver mode and Target Transmitter mode.
     }
 
     static void UpdateStateMachine()
     {
-        if (_timeout || _state != States::Busy)
-        {
-            return;
-        }
+      if (_timeout || _state != States::Busy)
+      {
+        return;
+      }
 
-        // Test Two-Wire Status Register.
-        switch(static_cast<Status>(TWSR & 0xF8))
-        {
-            //
-            // Table 22-7. Miscellaneous states
-            //
+      // Test Two-Wire Status Register.
+      switch (static_cast<Status>(TWSR & 0xF8))
+      {
+        //
+        // Table 22-7. Miscellaneous states
+        //
 
-            case Status::x00_BusError:
+        case Status::x00_BusError:
 
-                // Bus error due to an illegal START or STOP condition.
-                // No TWDR action. Only the internal hardware is affected,
-                // no STOP condition is sent on the bus.
-                // In all cases, the bus is released and TWSTO is cleared.
-                //TWCR = 0b10010101;
-                TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+          // Bus error due to an illegal START or STOP condition.
+          // No TWDR action. Only the internal hardware is affected,
+          // no STOP condition is sent on the bus.
+          // In all cases, the bus is released and TWSTO is cleared.
+          //TWCR = 0b10010101;
+          TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
 
-                break;
+          break;
 
-            case Status::xF8_Complete:
+        case Status::xF8_Complete:
 
-                // No relevant state information available; TWINT = “0”.
-                // No TWDR action. No TWCR action.
-                // Wait or proceed current transfer.
+          // No relevant state information available; TWINT = “0”.
+          // No TWDR action. No TWCR action.
+          // Wait or proceed current transfer.
 
-                wdt_reset();
+          wdt_reset();
 
-                // Disable WDT interrupt.
-                WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
-                WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped.
+          // Disable WDT interrupt.
+          WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
+          WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped.
 
-                _state = States::Ready;
+          _state = States::Ready;
 
-                break;
+          break;
 
-            //
-            // Common status codes:
-            //  Table 22-3. Status Codes for Controller Transmitter Mode
-            //  Table 22-4. Status Codes for Controller Receiver Mode
-            //
+        //
+        // Common status codes:
+        //  Table 22-3. Status Codes for Controller Transmitter Mode
+        //  Table 22-4. Status Codes for Controller Receiver Mode
+        //
 
-            case Status::x08_StartTransmitted:
+        case Status::x08_StartTransmitted:
 
-                // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
-                // Reset timestamp.
-                wdt_reset();
+          // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
+          // Reset timestamp.
+          wdt_reset();
 
-                // Load TargetAddress+W. Expect ACK or NOT ACK.
+          // Load TargetAddress+W. Expect ACK or NOT ACK.
 
-                // Assign Twin-Wire Data Register with target address and write bit.
-                TWDR = _target_address_write;
+          // Assign Twin-Wire Data Register with target address and write bit.
+          TWDR = _target_address_write;
 
-                // Reset TWINT bit of Twin-Wire Control Register by writing 1 to it.
-                //TWCR = 0b10000101;
-                TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+          // Reset TWINT bit of Twin-Wire Control Register by writing 1 to it.
+          //TWCR = 0b10000101;
+          TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
 
-                break;
+          break;
 
-            case Status::x10_RepeatedStartTransmitted:
+        case Status::x10_RepeatedStartTransmitted:
 
-                // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
-                // Reset timestamp.
-                wdt_reset();
+          // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
+          // Reset timestamp.
+          wdt_reset();
 
-                // Option 1: Load TargetAddress+W. Expect ACK or NOT ACK.
-                //TWDR = _target_address_write;
-                //TWCR = 0b10000101;
-                //TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+          // Option 1: Load TargetAddress+W. Expect ACK or NOT ACK.
+          //TWDR = _target_address_write;
+          //TWCR = 0b10000101;
+          //TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
 
-                // Option 2: Load TargetAddress+R. Expect ACK or NOT ACK.
-                TWDR = _target_address_read;
-                //TWCR = 0b10000101;
-                TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
-
-                break;
-
-            case Status::x38_ArbitrationLost:
-                // For Controller Transmitter mode, arbitration lost in TargetAddress+W or data bytes.
-                // For Controller Receiver mode, arbitration lost in TargetAddress+R or NOT ACK bit.
-
-                // Option 1: No TWDR action. 2-wire Serial Bus will be released and not addressed Target mode entered.
-                //TWCR = 0b10000101;
-                //TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 2: No TWDR action. A START condition will be transmitted when the bus becomes free.
-                //TWCR = 0b10100101;
-                TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);    // Try again.
-
-                break;
-
-            //
-            // Table 22-3. Status Codes for Controller Transmitter Mode
-            //
-
-            case Status::x18_TargetAddressWriteTransmittedAckReceived:
-
-                // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
-                // Reset timestamp.
-                wdt_reset();
-
-                // Option 1: Load data byte. Expect ACK or NOT ACK.
-                if (_internal_address_size > 0)
-                {
-                    _internal_address_size--;
-                    TWDR = _internal_address >> (_internal_address_size * 8);
-                }
-                else
-                {
-                    _index = 0;
-                    TWDR = _buffer[_index++];
-                }
-                //TWCR = 0b10000101;
-                TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 2: No TWDR action. Repeated START will be transmitted.
-                //TWCR = 0b10100101;
-                //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
-                //TWCR = 0b10010101;
-                //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
-                //TWCR = 0b10110101;
-                //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                break;
-
-            case Status::x20_TargetAddressWriteTransmittedNotAckReceived:
-
-                // Option 1: Load data byte. Expect data byte ACK or NOT ACK.
-                //TWDR = _data_byte;
-                //TWCR = 0b10000101;
-                //TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 2: No TWDR action. Repeated START will be transmitted.
-                //TWCR = 0b10100101;
-                //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
-                //TWCR = 0b10010101;
-                //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
-                //TWCR = 0b10110101;
-                TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);   // Try again.
-
-                break;
-
-            case Status::x28_DataByteTransmittedAckReceived:
-
-                // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
-                // Reset timestamp.
-                wdt_reset();
-
-                if (_internal_address_size > 0)
-                {
-                    _internal_address_size--;
-                    TWDR = _internal_address >> (_internal_address_size * 8);
-                }
-                else if (_sequence == Sequences::BurstWrite)
-                {
-                    if (_index < _count)
-                    {
-                        // Option 1: Load data byte. Expect ACK or NOT ACK.
-                        TWDR = _buffer[_index++];
-                        //TWCR = 0b10000101;
-                        TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
-                    }
-                    else
-                    {
-                        // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
-                        //TWCR = 0b10010101;
-                        TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                        _result = Results::Success;
-                    }
-                }
-                else if (_sequence == Sequences::BurstRead)
-                {
-                    // Option 2: No TWDR action. Repeated START will be transmitted.
-                    //TWCR = 0b10100101;
-                    TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
-                }
-
-                // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
-                //TWCR = 0b10110101;
-                //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                break;
-
-            case Status::x30_DataByteTransmittedNotAckReceived:
-
-                // Option 1: Load data byte. Expect data byte ACK or NOT ACK.
-                //TWDR = _data_byte;
-                //TWCR = 0b10000101;
-                //TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 2: No TWDR action. Repeated START will be transmitted.
-                //TWCR = 0b10100101;
-                //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
-                //TWCR = 0b10010101;
-                //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
-                //TWCR = 0b10110101;
-                TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);   // Try again.
-
-                break;
-
-            //
-            // Table 22-4. Status Codes for Controller Receiver Mode
-            //
-
-            case Status::x40_TargetAddressReadTransmittedAckReceived:
-
-                // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
-                // Reset timestamp.
-                wdt_reset();
-
-                _index = 0;
-
-                if (_index < _count - 1)
-                {
-                    // Option 2: No TWDR action. Data byte will be received and ACK will be returned.
-                    //TWCR = 0b11000101;  // Set EA bit to send ACK.
-                    TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN) | (_use_isr << TWIE);
-                }
-                else
-                {
-                    // Option 1: No TWDR action. Data byte will be received and NOT ACK will be returned.
-                    //TWCR = 0b10000101;  // Clear EA bit to send NOT ACK.
-                    TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
-                }
-
-                break;
-
-            case Status::x48_TargetAddressReadTransmittedNotAckReceived:
-
-                // Option 1: No TWDR action. Repeated START will be transmitted.
-                //TWCR = 0b10100101;
-                //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 2: No TWDR action. STOP condition will be transmitted and TWSTO flag will be reset.
-                //TWCR = 0b10010101;
-                //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 3: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
-                //TWCR = 0b10110101;
-                TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);   // Try again.
-
-                break;
-
-            case Status::x50_DateByteReceivedAckReturned:
-
-                // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
-                // Reset timestamp.
-                wdt_reset();
-
-                _buffer[_index++] = TWDR;
-
-                if (_index < _count - 1)
-                {
-                    // Option 2: No TWDR action. Data byte will be received and ACK will be returned.
-                    //TWCR = 0b11000101;  // Set EA bit to send ACK.
-                    TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN) | (_use_isr << TWIE);
-                }
-                else
-                {
-                    // Option 1: No TWDR action. Data byte will be received and NOT ACK will be returned.
-                    //TWCR = 0b10000101;
-                    TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
-                }
-
-                break;
-
-            case Status::x58_DataByteReceivedNotAckReturned:
-
-                _buffer[_index] = TWDR;
-
-                // Option 1: No TWDR action. Repeated START will be transmitted.
-                //TWCR = 0b10100101;
-                //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
-
-                // Option 2: No TWDR action. STOP condition will be transmitted and TWSTO flag will be reset.
-                //TWCR = 0b10010101;
-                TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                _result = Results::Success;
-
-                // Option 3: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
-                //TWCR = 0b10110101;
-                //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
-
-                break;
-
-            default:
-                break;
-        }
+          // Option 2: Load TargetAddress+R. Expect ACK or NOT ACK.
+          TWDR = _target_address_read;
+          //TWCR = 0b10000101;
+          TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+
+          break;
+
+        case Status::x38_ArbitrationLost:
+          // For Controller Transmitter mode, arbitration lost in TargetAddress+W or data bytes.
+          // For Controller Receiver mode, arbitration lost in TargetAddress+R or NOT ACK bit.
+
+          // Option 1: No TWDR action. 2-wire Serial Bus will be released and not addressed Target mode entered.
+          //TWCR = 0b10000101;
+          TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 2: No TWDR action. A START condition will be transmitted when the bus becomes free.
+          //TWCR = 0b10100101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);    // Try again.
+
+          break;
+
+        //
+        // Table 22-3. Status Codes for Controller Transmitter Mode
+        //
+
+        case Status::x18_TargetAddressWriteTransmittedAckReceived:
+
+          // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
+          // Reset timestamp.
+          wdt_reset();
+
+          // Option 1: Load data byte. Expect ACK or NOT ACK.
+          if (_internal_address_size > 0)
+          {
+            _internal_address_size--;
+            TWDR = _internal_address >> (_internal_address_size * 8);
+          }
+          else
+          {
+            _index = 0;
+            TWDR = _buffer[_index++];
+          }
+          //TWCR = 0b10000101;
+          TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 2: No TWDR action. Repeated START will be transmitted.
+          //TWCR = 0b10100101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
+          //TWCR = 0b10010101;
+          //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
+          //TWCR = 0b10110101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+          break;
+
+        case Status::x20_TargetAddressWriteTransmittedNotAckReceived:
+
+          // Option 1: Load data byte. Expect data byte ACK or NOT ACK.
+          //TWDR = _data_byte;
+          //TWCR = 0b10000101;
+          //TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 2: No TWDR action. Repeated START will be transmitted.
+          //TWCR = 0b10100101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
+          //TWCR = 0b10010101;
+          TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
+          //TWCR = 0b10110101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);   // Try again.
+
+          break;
+
+        case Status::x28_DataByteTransmittedAckReceived:
+
+          // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
+          // Reset timestamp.
+          wdt_reset();
+
+          if (_internal_address_size > 0)
+          {
+            _internal_address_size--;
+            TWDR = _internal_address >> (_internal_address_size * 8);
+          }
+          else if (_sequence == Sequences::BurstWrite)
+          {
+            if (_index < _count)
+            {
+              // Option 1: Load data byte. Expect ACK or NOT ACK.
+              TWDR = _buffer[_index++];
+              //TWCR = 0b10000101;
+              TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+            }
+            else
+            {
+              // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
+              //TWCR = 0b10010101;
+              TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+              _result = Results::Success;
+            }
+          }
+          else if (_sequence == Sequences::BurstRead)
+          {
+            // Option 2: No TWDR action. Repeated START will be transmitted.
+            //TWCR = 0b10100101;
+            TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
+          }
+
+          // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
+          //TWCR = 0b10110101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+          break;
+
+        case Status::x30_DataByteTransmittedNotAckReceived:
+
+          // Option 1: Load data byte. Expect data byte ACK or NOT ACK.
+          //TWDR = _data_byte;
+          //TWCR = 0b10000101;
+          //TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 2: No TWDR action. Repeated START will be transmitted.
+          //TWCR = 0b10100101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
+          //TWCR = 0b10010101;
+          TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
+          //TWCR = 0b10110101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);   // Try again.
+
+          break;
+
+        //
+        // Table 22-4. Status Codes for Controller Receiver Mode
+        //
+
+        case Status::x40_TargetAddressReadTransmittedAckReceived:
+
+          // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
+          // Reset timestamp.
+          wdt_reset();
+
+          _index = 0;
+
+          if (_index < _count - 1)
+          {
+            // Option 2: No TWDR action. Data byte will be received and ACK will be returned.
+            //TWCR = 0b11000101;  // Set EA bit to send ACK.
+            TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN) | (_use_isr << TWIE);
+          }
+          else
+          {
+            // Option 1: No TWDR action. Data byte will be received and NOT ACK will be returned.
+            //TWCR = 0b10000101;  // Clear EA bit to send NOT ACK.
+            TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+          }
+
+          break;
+
+        case Status::x48_TargetAddressReadTransmittedNotAckReceived:
+
+          // Option 1: No TWDR action. Repeated START will be transmitted.
+          //TWCR = 0b10100101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 2: No TWDR action. STOP condition will be transmitted and TWSTO flag will be reset.
+          //TWCR = 0b10010101;
+          TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 3: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
+          //TWCR = 0b10110101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);   // Try again.
+
+          break;
+
+        case Status::x50_DateByteReceivedAckReturned:
+
+          // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
+          // Reset timestamp.
+          wdt_reset();
+
+          _buffer[_index++] = TWDR;
+
+          if (_index < _count - 1)
+          {
+            // Option 2: No TWDR action. Data byte will be received and ACK will be returned.
+            //TWCR = 0b11000101;  // Set EA bit to send ACK.
+            TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN) | (_use_isr << TWIE);
+          }
+          else
+          {
+            // Option 1: No TWDR action. Data byte will be received and NOT ACK will be returned.
+            //TWCR = 0b10000101;
+            TWCR = (1 << TWINT) | (1 << TWEN) | (_use_isr << TWIE);
+          }
+
+          break;
+
+        case Status::x58_DataByteReceivedNotAckReturned:
+
+          _buffer[_index] = TWDR;
+
+          // Option 1: No TWDR action. Repeated START will be transmitted.
+          //TWCR = 0b10100101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);
+
+          // Option 2: No TWDR action. STOP condition will be transmitted and TWSTO flag will be reset.
+          //TWCR = 0b10010101;
+          TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+          _result = Results::Success;
+
+          // Option 3: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
+          //TWCR = 0b10110101;
+          //TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+          break;
+
+        default:
+          break;
+      }
     }
 
     friend void PFHandleTimeout();       // Called by WDT ISR.
