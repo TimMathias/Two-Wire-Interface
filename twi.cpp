@@ -70,165 +70,165 @@ volatile bool TWI::_timeout;               // Flag to indicate timeout condition
 
 void TWI::Enable(const uint32_t twi_freq = 400000u, const bool use_pullups = false)//, const uint16_t twi_mext_timeout = 10000u)
 {
-    // Disable TWI ACK, TWI module and TWI interrupt.
-    TWCR &= ~((1 << TWEA) | (1 << TWEN) | (1 << TWIE));
+  // Disable TWI ACK, TWI module and TWI interrupt.
+  TWCR &= ~((1 << TWEA) | (1 << TWEN) | (1 << TWIE));
 
-    _state = States::Ready;
-    _result = Results::Unknown;
+  _state = States::Ready;
+  _result = Results::Unknown;
 
-    if (use_pullups)
-    {
-        // Activate internal pullups for TWI.
-        pinMode(SDA, INPUT_PULLUP);
-        pinMode(SCL, INPUT_PULLUP);
-    }
-    else
-    {
-        // Deactivate internal pullups for TWI.
-        pinMode(SDA, INPUT);
-        pinMode(SCL, INPUT);
-    }
+  if (use_pullups)
+  {
+    // Activate internal pullups for TWI.
+    pinMode(SDA, INPUT_PULLUP);
+    pinMode(SCL, INPUT_PULLUP);
+  }
+  else
+  {
+    // Deactivate internal pullups for TWI.
+    pinMode(SDA, INPUT);
+    pinMode(SCL, INPUT);
+  }
 
-    SetFrequency(twi_freq);
+  SetFrequency(twi_freq);
 
-    // Enable TWI module and TWI interrupt.
-    TWCR = (1 << TWEN) | (_use_isr << TWIE);
-    //TWCR = (1 << TWEA) | (1 << TWEN) | (_use_isr << TWIE);  // For Target Receiver mode and Target Transmitter mode.
+  // Enable TWI module and TWI interrupt.
+  TWCR = (1 << TWEN) | (_use_isr << TWIE);
+  //TWCR = (1 << TWEA) | (1 << TWEN) | (_use_isr << TWIE);  // For Target Receiver mode and Target Transmitter mode.
 
-    wdt_reset();
-    WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
-    WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped. Will be started on a START condition.
+  wdt_reset();
+  WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
+  WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped. Will be started on a START condition.
 }
 
 void TWI::Disable()
 {
-    cli();
+  cli();
 
-    // Disable WDT.
-    wdt_reset();
-    WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
-    WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped. Will be started on a START condition.
+  // Disable WDT.
+  wdt_reset();
+  WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
+  WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped. Will be started on a START condition.
 
-    // Disable TWI ACK, TWI module and TWI interrupt.
-    TWCR &= ~((1 << TWEA) | (1 << TWEN) | (1 << TWIE));
+  // Disable TWI ACK, TWI module and TWI interrupt.
+  TWCR &= ~((1 << TWEA) | (1 << TWEN) | (1 << TWIE));
 
-    sei();
+  sei();
 
-    // Deactivate internal pullups for TWI.
-    pinMode(SDA, INPUT);
-    pinMode(SCL, INPUT);
+  // Deactivate internal pullups for TWI.
+  pinMode(SDA, INPUT);
+  pinMode(SCL, INPUT);
 }
 
 void TWI::SetOwnTargetAddress(const byte own_target_address, const bool general_call_address)
 {
-    TWAR = own_target_address << 1 | general_call_address;
+  TWAR = own_target_address << 1 | general_call_address;
 }
 
 uint32_t TWI::SetFrequency(uint32_t twi_freq)
 {
-    if (_smbus_mode)
+  if (_smbus_mode)
+  {
+    // SMBus clock frequency is 10 kHz to 1 MHz for SMBus v3.1.
+    // SMBus clock frequency is 10 kHz to 100 kHz for SMBus v1.1.
+    /**
+    if (twi_freq > 100000u)
     {
-        // SMBus clock frequency is 10 kHz to 1 MHz for SMBus v3.1.
-        // SMBus clock frequency is 10 kHz to 100 kHz for SMBus v1.1.
-        /**
-        if (twi_freq > 100000u)
-        {
-            twi_freq = 100000u;
-        }
-        else
-        /**/
-        if (twi_freq < 10000u)
-        {
-            twi_freq = 10000u;
-        }
+    twi_freq = 100000u;
     }
-    if (twi_freq > 400000u)
+    else
+    /**/
+    if (twi_freq < 10000u)
     {
-        // Up to 400 kHz data transfer speed.
-        // §22.1 Features
-        twi_freq = 400000u;
+      twi_freq = 10000u;
     }
+  }
+  if (twi_freq > 400000u)
+  {
+    // Up to 400 kHz data transfer speed.
+    // §22.1 Features
+    twi_freq = 400000u;
+  }
 
-    // TWI prescaler of 1.
-    // Table 22-8. TWI Bit Rate Prescaler
-    // TWPS1 = 0, TWPS0 = 0
-    TWSR &= 0b11111100;
+  // TWI prescaler of 1.
+  // Table 22-8. TWI Bit Rate Prescaler
+  // TWPS1 = 0, TWPS0 = 0
+  TWSR &= 0b11111100;
 
-    // Achievable maximum TWI frequency with current CPU frequency, CLK prescaler and minimum TWBR with TWI prescaler of 1.
-    // Rounded down to nearest integer.
-    const uint32_t TWI_FREQ_MAX = F_CPU / ( ( 1 << CLKPR ) * ( 16 + 2 * 0x00 * 1 ) );
+  // Achievable maximum TWI frequency with current CPU frequency, CLK prescaler and minimum TWBR with TWI prescaler of 1.
+  // Rounded down to nearest integer.
+  const uint32_t TWI_FREQ_MAX = F_CPU / ( ( 1 << CLKPR ) * ( 16 + 2 * 0x00 * 1 ) );
 
-    // Achievable minimum TWI frequency with current CPU frequency, CLK prescaler and maximum TWBR with TWI prescaler of 1.
-    // Rounded up to nearest integer.
-    const uint32_t DIVISOR = ( ( 1 << CLKPR ) * ( 16 + 2 * 0xFF * 1 ) );
-    const uint32_t TWI_FREQ_MIN = (F_CPU + (DIVISOR - 1)) / DIVISOR;
+  // Achievable minimum TWI frequency with current CPU frequency, CLK prescaler and maximum TWBR with TWI prescaler of 1.
+  // Rounded up to nearest integer.
+  const uint32_t DIVISOR = ( ( 1 << CLKPR ) * ( 16 + 2 * 0xFF * 1 ) );
+  const uint32_t TWI_FREQ_MIN = (F_CPU + (DIVISOR - 1)) / DIVISOR;
 
-    if (twi_freq > TWI_FREQ_MAX)
-    {
-        twi_freq = TWI_FREQ_MAX;
-    }
-    else if (twi_freq < TWI_FREQ_MIN)
-    {
-        twi_freq = TWI_FREQ_MIN;
-    }
+  if (twi_freq > TWI_FREQ_MAX)
+  {
+    twi_freq = TWI_FREQ_MAX;
+  }
+  else if (twi_freq < TWI_FREQ_MIN)
+  {
+    twi_freq = TWI_FREQ_MIN;
+  }
 
-    // TWI bit rate.
-    // §22.5.2 Bit Rate Generator Unit
-    // §9.12.2 CLKPR – Clock Prescale Register
-    const byte bit_rate = (F_CPU / (1 << CLKPR) / twi_freq - 16) / 2;
+  // TWI bit rate.
+  // §22.5.2 Bit Rate Generator Unit
+  // §9.12.2 CLKPR – Clock Prescale Register
+  const byte bit_rate = (F_CPU / (1 << CLKPR) / twi_freq - 16) / 2;
 
-    TWBR = bit_rate;
+  TWBR = bit_rate;
 
-    // Check.
-    const uint32_t twi_freq_check = F_CPU / ( ( 1 << CLKPR ) * ( 16 + 2 * TWBR * 1 ) );
+  // Check.
+  const uint32_t twi_freq_check = F_CPU / ( ( 1 << CLKPR ) * ( 16 + 2 * TWBR * 1 ) );
 
-    return twi_freq_check;
+  return twi_freq_check;
 }
 
 bool TWI::Transaction(const Sequences sequence, const byte target_address, const byte internal_address, const byte internal_address_size, const byte *buffer, const byte count, const Modes mode = Modes::Continue)
 {
-    if (internal_address_size < 1 || internal_address_size > 3 || buffer == nullptr || count < 1)
-    {
-        return false;
-    }
-    cli();
-    States s = _state;
-    sei();
-    if (s == States::Busy)
-    {
-        return false;
-    }
-    _state = States::Busy;
-    _result = Results::Unknown;
-    _sequence = sequence;
-    _use_isr = mode == Modes::Continue ? true : false;
-    _target_address_read = target_address << 1 | 1;
-    _target_address_write = target_address << 1;
-    _internal_address = internal_address & 0x00ffffff;
-    _internal_address_size = internal_address_size > 3 ? 3 : internal_address_size;
-    _buffer = buffer;
-    _count = count;
-    _index = 0;
-    _timeout = false;
-    TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);  // START.
-    wdt_reset();
-    WDTCSR = 1 << WDIE;  // Enable WDT interrupt. Enabled on START.
+  if (internal_address_size < 1 || internal_address_size > 3 || buffer == nullptr || count < 1)
+  {
+    return false;
+  }
+  cli();
+  States s = _state;
+  sei();
+  if (s == States::Busy)
+  {
+    return false;
+  }
+  _state = States::Busy;
+  _result = Results::Unknown;
+  _sequence = sequence;
+  _use_isr = mode == Modes::Continue ? true : false;
+  _target_address_read = target_address << 1 | 1;
+  _target_address_write = target_address << 1;
+  _internal_address = internal_address & 0x00ffffff;
+  _internal_address_size = internal_address_size > 3 ? 3 : internal_address_size;
+  _buffer = buffer;
+  _count = count;
+  _index = 0;
+  _timeout = false;
+  TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN) | (_use_isr << TWIE);  // START.
+  wdt_reset();
+  WDTCSR = 1 << WDIE;  // Enable WDT interrupt. Enabled on START.
 
-    if (mode == Modes::Continue)
-    {
-        return true;  // Let the TWI ISR handle the rest of the transaction.
-    }
+  if (mode == Modes::Continue)
+  {
+    return true;  // Let the TWI ISR handle the rest of the transaction.
+  }
 
-    // Handle the rest of the transaction with a blocking while loop.
-    while ((_state == States::Busy) && !_timeout)
-    {
-        // Wait for TWINT to go high or a timeout to occur before updating the state machine.
-        while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  // Handle the rest of the transaction with a blocking while loop.
+  while ((_state == States::Busy) && !_timeout)
+  {
+    // Wait for TWINT to go high or a timeout to occur before updating the state machine.
+    while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
 
-        UpdateStateMachine();  // TWI non-ISR mode.
-    }
+    UpdateStateMachine();  // TWI non-ISR mode.
+  }
 
-    return true;
+  return true;
 }
 
 //
@@ -237,67 +237,67 @@ bool TWI::Transaction(const Sequences sequence, const byte target_address, const
 
 void TWI::SendStart()
 {
-    TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
-    wdt_reset();
-    WDTCSR = 1 << WDIE;  // Enable WDT interrupt. Enabled on START.
-    while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
+  wdt_reset();
+  WDTCSR = 1 << WDIE;  // Enable WDT interrupt. Enabled on START.
+  while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
 }
 
 void TWI::SendTargetAddressWrite(const byte target_address)
 {
-    TWDR = target_address << 1;  // R / nW bit is 0.
-    TWCR = (1 << TWINT) | (1 << TWEN);
-    while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
-    wdt_reset();
+  TWDR = target_address << 1;  // R/nW bit is 0.
+  TWCR = (1 << TWINT) | (1 << TWEN);
+  while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  wdt_reset();
 }
 
 void TWI::SendTargetAddressRead(const byte target_address)
 {
-    TWDR = target_address << 1 | 1;  // R / nW bit is 1.
-    TWCR = (1 << TWINT) | (1 << TWEN);
-    while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
-    wdt_reset();
+  TWDR = target_address << 1 | 1;  // R / nW bit is 1.
+  TWCR = (1 << TWINT) | (1 << TWEN);
+  while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  wdt_reset();
 }
 
 void TWI::SendData(const byte data)
 {
-    TWDR = data;
-    TWCR = (1 << TWINT) | (1 << TWEN);
-    while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
-    wdt_reset();
+  TWDR = data;
+  TWCR = (1 << TWINT) | (1 << TWEN);
+  while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  wdt_reset();
 }
 
 byte TWI::ReceiveDataSendAck()
 {
-    TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN);
-    while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
-    wdt_reset();
-    return TWDR;
+  TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN);
+  while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  wdt_reset();
+  return TWDR;
 }
 
 byte TWI::ReceiveDataSendNotAck()
 {
-    TWCR = (1 << TWINT) | (1 << TWEN);
-    while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
-    wdt_reset();
-    return TWDR;
+  TWCR = (1 << TWINT) | (1 << TWEN);
+  while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  wdt_reset();
+  return TWDR;
 }
 
 void TWI::SendStop()
 {
-    TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN);
-    while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
-    wdt_reset();
+  TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN);
+  while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  wdt_reset();
 
-    // Disable WDT interrupt.
-    WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
-    WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped.
+  // Disable WDT interrupt.
+  WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
+  WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped.
 }
 
 void TWI::ReleaseBus()
 {
-    TWCR = (1 << TWINT) | (1 << TWEN);
-    //TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN);  // For Target Receiver mode and Target Transmitter mode.
+  TWCR = (1 << TWINT) | (1 << TWEN);
+  //TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN);  // For Target Receiver mode and Target Transmitter mode.
 }
 
 //
@@ -306,28 +306,28 @@ void TWI::ReleaseBus()
 
 inline void PFHandleTimeout()
 {
-    // Disable any further WDT interrrupts.
-    // It will be re-enabled at the next START condition.
-    WDTCSR = 0;
+  // Disable any further WDT interrrupts.
+  // It will be re-enabled at the next START condition.
+  WDTCSR = 0;
 
-    TWI::HandleTimeout();
+  TWI::HandleTimeout();
 
-    TWI::_timeout = true;
-    TWI::_state = TWI::States::Ready;
-    TWI::_result = TWI::Results::Timeout;
+  TWI::_timeout = true;
+  TWI::_state = TWI::States::Ready;
+  TWI::_result = TWI::Results::Timeout;
 }
 
 inline void PFUpdateStateMachine()
 {
-    TWI::UpdateStateMachine();  // TWI ISR mode.
+  TWI::UpdateStateMachine();  // TWI ISR mode.
 }
 
 ISR(WDT_vect)
 {
-    PFHandleTimeout();
+  PFHandleTimeout();
 }
 
 ISR(TWI_vect)
 {
-    PFUpdateStateMachine();
+  PFUpdateStateMachine();
 };
