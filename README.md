@@ -8,6 +8,7 @@ Two-Wire Interface for Arduino – Asynchronous and Synchronous Transactions.
 - Buffers are supplied by the caller.
 - Transaction limit of 65535 bytes.
 - Controller-Transmitter and Controller-Receiver modes only.
+- Internal pullup resistors on SCL and SDA are disabled by default.
 
 ## Asynchronous transactions (default)
 
@@ -78,6 +79,10 @@ There is a 32&nbsp;ms timeout provided by the Watchdog Timer to detect when the 
 ## Buffers
 
 The caller supplies the buffer and the buffer size. This provides greater flexibility, e.g. double buffering a display using asynchronous transactions where the second buffer can be populated with data in `loop()` while the first buffer is being sent to the display by the TWI ISR.
+
+## Internal pullup resistors
+
+The internal pullup resistors on SCL and SDA are disabled by default. To enable them, call `twi.Enable(twi_frequency, pullups)` with the second parameter set to true.
 
 ## Example
 
