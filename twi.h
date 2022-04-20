@@ -134,8 +134,15 @@ class TWI
     static volatile States _state;
     static volatile Results _result;
 
-    static volatile bool _use_isr;               // true : Asynchronous (non-blocking) transactions using the TWI ISR.
-                                                 // false: Synchronous (blocking) transactions by polling the TWINT flag.
+    // Internal pullup resistors on SCL and SDA
+    //   true : enable them.
+    //   false: disable them.
+    static volatile bool _use_pullups;
+
+    // TWI ISR
+    //   true : Asynchronous (non-blocking) transactions using the TWI ISR.
+    //   false: Synchronous (blocking) transactions by polling the TWINT flag.
+    static volatile bool _use_isr;
 
     static volatile byte *_buffer;               // Pointer to caller's buffer.
     static volatile byte _count;                 // Number of bytes to transfer.
@@ -319,9 +326,18 @@ class TWI
       // Disable TWI ACK, TWI module and TWI interrupt.
       TWCR &= ~((1 << TWEA) | (1 << TWEN) | (1 << TWIE));
 
-      // Activate internal pullups for TWI.
-      pinMode(SDA, INPUT_PULLUP);
-      pinMode(SCL, INPUT_PULLUP);
+      if (_use_pullups)
+      {
+        // Activate internal pullups for TWI.
+        pinMode(SDA, INPUT_PULLUP);
+        pinMode(SCL, INPUT_PULLUP);
+      }
+      else
+      {
+        // Deactivate internal pullups for TWI.
+        pinMode(SDA, INPUT);
+        pinMode(SCL, INPUT);
+      }
 
       // Restore the previous bitrate and address settings.
       TWAR = previous_TWAR;
