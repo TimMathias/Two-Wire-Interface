@@ -55,8 +55,16 @@ TWI::Sequences TWI::_sequence;
 volatile TWI::States TWI::_state = States::Ready;
 volatile TWI::Results TWI::_result = Results::Unknown;
 
-volatile bool TWI::_use_isr = true;        // true : Asynchronous (non-blocking) transactions using the TWI ISR.
-                                           // false: Synchronous (blocking) transactions by polling the TWINT flag.
+// Internal pullup resistors on SCL and SDA
+//   true : enable them.
+//   false: disable them.
+volatile bool TWI::_use_pullups = false;
+
+// TWI ISR
+//   true : Asynchronous (non-blocking) transactions using the TWI ISR.
+//   false: Synchronous (blocking) transactions by polling the TWINT flag.
+volatile bool TWI::_use_isr = true;
+
 bool TWI::_smbus_mode = false;
 volatile byte* TWI::_buffer;               // Pointer to caller's buffer.
 volatile byte TWI::_count;                 // Number of bytes to transfer.
@@ -75,8 +83,9 @@ void TWI::Enable(const uint32_t twi_freq = 400000u, const bool use_pullups = fal
 
   _state = States::Ready;
   _result = Results::Unknown;
+  _use_pullups = use_pullups;
 
-  if (use_pullups)
+  if (_use_pullups)
   {
     // Activate internal pullups for TWI.
     pinMode(SDA, INPUT_PULLUP);
