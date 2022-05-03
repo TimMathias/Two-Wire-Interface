@@ -67,8 +67,8 @@ volatile bool TWI::_use_isr = true;
 
 bool TWI::_smbus_mode = false;
 volatile byte* TWI::_buffer;               // Pointer to caller's buffer.
-volatile byte TWI::_count;                 // Number of bytes to transfer.
-volatile byte TWI::_index;                 // Index into caller's buffer.
+volatile uint16_t TWI::_count;             // Number of bytes to transfer.
+volatile uint16_t TWI::_index;             // Index into caller's buffer.
 volatile byte TWI::_target_address_read;   // Composite 7-bit target address merged with read bit (1).
 volatile byte TWI::_target_address_write;  // Composite 7-bit target address merged with write bit (0).
 volatile uint32_t TWI::_internal_address;  // Internal register to read/write.
