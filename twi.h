@@ -146,7 +146,7 @@ class TWI
 
     static volatile byte *_buffer;               // Pointer to caller's buffer.
     static volatile uint16_t _count;             // Number of bytes to transfer.
-    static volatile byte _index;                 // Index into caller's buffer.
+    static volatile uint16_t _index;             // Index into caller's buffer.
     static volatile byte _target_address_read;   // Composite 7-bit target address merged with read bit (1).
     static volatile byte _target_address_write;  // Composite 7-bit target address merged with write bit (0).
     static volatile uint32_t _internal_address;  // Internal register to read/write.
