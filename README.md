@@ -60,7 +60,9 @@ Specify the wait flag `TWI::Modes::Wait` to enable synchronous mode, e.g. to rea
 twi.Read(target_address, rx_buffer, rx_buffer_size, TWI::Modes::Wait);
 ```
 
-These variants return `false` if the synchronous transaction failed to start, and `true` when the transaction finishes either successfully or unsuccessfully. Call `twi.GetResult()` or `twi.IsSuccess()` to find out whether it completed successfully.
+These variants return `false` if the synchronous transaction failed to start, and `true` when the transaction finishes whether successfully or unsuccessfully.
+
+Call `twi.GetResult()` or `twi.IsSuccess()` to find out whether it completed successfully.
 
 ## Internal address register
 
@@ -86,5 +88,10 @@ The internal pullup resistors on SCL and SDA are disabled by default. To enable 
 
 ## Example
 
-This simulator example demonstrates how to communicate with a Motion Processor Unit &ndash; the MPU-6050 &ndash; on the I<sup>2</sup>C bus. It also demonstrates recovery from a communication error, i.e. press the buttons to freeze the I<sup>2</sup>C bus. Then upon releasing them, the TWI resets and continues with normal communication: [TWI MPU-6050 Test](https://wokwi.com/projects/306825661000974912)
+This simulator example demonstrates how to communicate with a Motion Processor Unit &ndash; the MPU-6050 &ndash; on the I<sup>2</sup>C bus. It also demonstrates recovery from a communication error, i.e. press the buttons to freeze the I<sup>2</sup>C bus, whence upon releasing them, the TWI resets and continues with normal communication: [TWI MPU-6050 Test](https://wokwi.com/projects/306825661000974912):
+
+ [![image](https://user-images.githubusercontent.com/67882955/166562996-37a462e0-a560-43ea-b4a0-ab68c4e13ea0.png)](https://wokwi.com/projects/306825661000974912)
+
+
+
 
