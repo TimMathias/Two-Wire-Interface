@@ -68,7 +68,7 @@ Call `twi.GetResult()` or `twi.IsSuccess()` to find out whether it completed suc
 
 Some target devices have addressable internal registers for configuration and control information. The internal address size can be 1, 2 or 3 bytes:
 
-| Internal address bytes | Internal address range |
+| Size of internal address register (bytes) | Internal address range |
 | :---: | :---: |
 | 1 | 0 to 255 |
 | 2 | 0 to 65,535 |
@@ -80,7 +80,7 @@ There is a 32&nbsp;ms timeout provided by the Watchdog Timer to detect when the 
 
 ## Buffers
 
-The caller supplies the buffer and the buffer size. This provides greater flexibility, e.g. double buffering a display using asynchronous transactions where the second buffer can be populated with data in `loop()` while the first buffer is being sent to the display by the TWI ISR.
+The caller supplies the buffer and the buffer size. This provides greater flexibility, e.g. a display can be double buffered using asynchronous transactions where the second buffer can be populated with data in `loop()` while the first buffer is being sent to the display by the TWI ISR.
 
 ## Internal pullup resistors
 
