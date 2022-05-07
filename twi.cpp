@@ -1,7 +1,7 @@
 //
 // Asynchronous Two-Wire Interface (IIC or I2C) for ATmega48A/PA/88A/PA/168A/PA/328/P
 //
-// Implements non-blocking (aynchronous) burst-write and burst-read using the TWI ISR and WDT ISR.
+// Implements non-blocking (asynchronous) burst-write and burst-read using the TWI ISR and WDT ISR.
 //
 // The non-blocking Read/Write functions initiate the transaction, then return to the caller,
 // then the ISR continues the transaction to completion and sets flags to indicate completion and result status.
