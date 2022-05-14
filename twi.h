@@ -321,6 +321,7 @@ class TWI
     // Interrupt Service Routines for watchdog timer and TWI.
     //
 
+    static inline void SendStopFromTwiIsr();
     static inline void HandleTimeout();
     static inline void UpdateStateMachine();
     friend void PFHandleTimeout();       // Called by WDT ISR.

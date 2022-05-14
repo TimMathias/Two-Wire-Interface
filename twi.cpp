@@ -295,7 +295,8 @@ byte TWI::ReceiveDataSendNotAck()
 void TWI::SendStop()
 {
   TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN);
-  while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  //while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
+  while (!((TWSR & 0xF8) == 0xF8 || (TWSR & 0xF8) == 0x00) && !_timeout) continue;
   wdt_reset();
 
   // Disable WDT interrupt.
@@ -312,6 +313,19 @@ void TWI::ReleaseBus()
 //
 // Interrupt Service Routines for watchdog timer and TWI.
 //
+
+void TWI::SendStopFromTwiIsr()
+{
+  TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+
+  wdt_reset();
+
+  // Disable WDT interrupt.
+  WDTCSR = (1 << WDCE) | (1 << WDE);  // Enable WDT changes.
+  WDTCSR = (1 << WDP0) | (0 << WDE);  // 32 ms timeout. Stopped.
+
+  _state = States::Ready;
+}
 
 void TWI::HandleTimeout()
 {
@@ -365,7 +379,8 @@ void TWI::UpdateStateMachine()
       // no STOP condition is sent on the bus.
       // In all cases, the bus is released and TWSTO is cleared.
       //TWCR = 0b10010101;
-      TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      SendStopFromTwiIsr();
 
       break;
 
@@ -471,6 +486,7 @@ void TWI::UpdateStateMachine()
       // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
       //TWCR = 0b10010101;
       //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      //SendStopFromTwiIsr();
 
       // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
       //TWCR = 0b10110101;
@@ -491,7 +507,8 @@ void TWI::UpdateStateMachine()
 
       // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
       //TWCR = 0b10010101;
-      TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      SendStopFromTwiIsr();
 
       // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
       //TWCR = 0b10110101;
@@ -523,7 +540,8 @@ void TWI::UpdateStateMachine()
         {
           // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
           //TWCR = 0b10010101;
-          TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+          //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+          SendStopFromTwiIsr();
 
           _result = Results::Success;
         }
@@ -554,7 +572,8 @@ void TWI::UpdateStateMachine()
 
       // Option 3: No TWDR action. STOP condition will be transmitted. TWSTO Flag will be reset.
       //TWCR = 0b10010101;
-      TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      SendStopFromTwiIsr();
 
       // Option 4: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
       //TWCR = 0b10110101;
@@ -597,7 +616,8 @@ void TWI::UpdateStateMachine()
 
       // Option 2: No TWDR action. STOP condition will be transmitted and TWSTO flag will be reset.
       //TWCR = 0b10010101;
-      TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      SendStopFromTwiIsr();
 
       // Option 3: No TWDR action. STOP condition followed by a START condition will be transmitted and TWSTO flag will be reset.
       //TWCR = 0b10110101;
@@ -638,7 +658,8 @@ void TWI::UpdateStateMachine()
 
       // Option 2: No TWDR action. STOP condition will be transmitted and TWSTO flag will be reset.
       //TWCR = 0b10010101;
-      TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      //TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
+      SendStopFromTwiIsr();
 
       _result = Results::Success;
 
