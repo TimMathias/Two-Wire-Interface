@@ -262,7 +262,7 @@ void TWI::SendTargetAddressWrite(const byte target_address)
 
 void TWI::SendTargetAddressRead(const byte target_address)
 {
-  TWDR = target_address << 1 | 1;  // R / nW bit is 1.
+  TWDR = target_address << 1 | 1;  // R/nW bit is 1.
   TWCR = (1 << TWINT) | (1 << TWEN);
   while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
   wdt_reset();
@@ -295,8 +295,10 @@ byte TWI::ReceiveDataSendNotAck()
 void TWI::SendStop()
 {
   TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN);
-  //while ((TWCR & (1 << TWINT)) == 0 && !_timeout) continue;
-  while (!((TWSR & 0xF8) == 0xF8 || (TWSR & 0xF8) == 0x00) && !_timeout) continue;
+  
+  // TWINT is not set after STOP, so poll TWSR for the result (takes 5 us).
+  while (static_cast<Status>(TWSR & 0xF8) != Status::xF8_Complete && static_cast<Status>(TWSR & 0xF8) != Status::x00_BusError && !_timeout) continue;
+
   wdt_reset();
 
   // Disable WDT interrupt.
