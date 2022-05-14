@@ -318,6 +318,10 @@ void TWI::SendStopFromTwiIsr()
 {
   TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN) | (_use_isr << TWIE);
 
+  // TWINT is not set after STOP, so poll TWSR for the result (takes 5 us).
+//  while (!((TWSR & 0xF8) == xF8_Complete || (TWSR & 0xF8) == x00_BusError) && !_timeout) continue;
+  while (static_cast<Status>(TWSR & 0xF8) != Status::xF8_Complete && static_cast<Status>(TWSR & 0xF8) != Status::x00_BusError && !_timeout) continue;
+
   wdt_reset();
 
   // Disable WDT interrupt.
