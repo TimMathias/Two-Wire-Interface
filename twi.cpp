@@ -705,4 +705,4 @@ ISR(WDT_vect)
 ISR(TWI_vect)
 {
   PFUpdateStateMachine();
-};
+}
