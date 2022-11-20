@@ -298,7 +298,7 @@ class TWI
 
   private:
 
-    bool Transaction(const Sequences sequence, const byte target_address, const byte internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue);
+    bool Transaction(const Sequences sequence, const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue);
 
   public:
 
