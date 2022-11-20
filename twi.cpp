@@ -194,7 +194,7 @@ uint32_t TWI::SetFrequency(uint32_t twi_freq)
   return twi_freq_check;
 }
 
-bool TWI::Transaction(const Sequences sequence, const byte target_address, const byte internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
+bool TWI::Transaction(const Sequences sequence, const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
 {
   if (internal_address_size > 3 || buffer == nullptr || count < 1)
   {
