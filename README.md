@@ -1,5 +1,5 @@
 # Two-Wire Interface
-Two-Wire Interface for Arduino – Asynchronous and Synchronous Transactions.
+Two-Wire Interface for Arduino – Asynchronous and Synchronous Transactions – Controller and Target modes.
 
 - Asynchronous (non-blocking) transactions using the Two-Wire Interface (TWI) interrupt service routine.
 - Synchronous (blocking) transactions by polling the TWI interrupt flag.
@@ -7,12 +7,11 @@ Two-Wire Interface for Arduino – Asynchronous and Synchronous Transactions.
 - 32 ms timeout provided by the Watchdog Timer.
 - Buffers are supplied by the caller.
 - Transaction limit of 65535 bytes.
-- Controller-Transmitter and Controller-Receiver modes only.
 - Internal pullup resistors on SCL and SDA are disabled by default.
 
 ## Asynchronous transactions (default)
 
-These functions return `true` to indicate that the asynchronous transaction started successfully, or `false` if it failed to start.
+These functions return an `enum` to indicate the status of the transaction. If it fails to start, it returns `TWI::Results::FailedToStart`. If it started, it returns `TWI::Results::Started`.
 
 To find out whether the transaction completed successfully, call `twi.GetResult()` or `twi.IsSuccess()` in `loop()`.
 
@@ -60,9 +59,7 @@ Specify the wait flag `TWI::Modes::Wait` to enable synchronous mode, e.g. to rea
 twi.Read(target_address, rx_buffer, rx_buffer_size, TWI::Modes::Wait);
 ```
 
-These variants return `false` if the synchronous transaction failed to start, and `true` when the transaction finishes whether successfully or unsuccessfully.
-
-Call `twi.GetResult()` or `twi.IsSuccess()` to find out whether it completed successfully.
+These functions return an `enum` to indicate the status of the transaction. If it fails to start, it returns `TWI::Results::FailedToStart`. If it completes successfully, it returns `TWI::Results::Success`.
 
 ## Internal address register
 
