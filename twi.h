@@ -56,58 +56,105 @@
 #include <Arduino.h>
 #include <avr/wdt.h>
 
+#include "queue.h"
+
+#define BYTE_BUFFER_LENGTH 64
+
+// Two-Wire Interface.
 class TWI
 {
+  public:
+
+    // Transaction modes.
+    enum class Modes : bool
+    {
+      Continue,  // Returns to the caller after starting the transaction. The TWI ISR continues the transaction to completion asynchronously.
+      Wait       // Waits for the TWI ISR to complete the transaction.
+    };
+
+    // Transaction sequences.
+    enum class Sequences : byte
+    {
+      BurstRead,        // Tx Start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
+                        // Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
+      BurstWrite,       // Tx Start, Tx TargetAddress+W, Rx Ack, [Optional: Tx internal address, Rx Ack,] (Tx data and Rx Ack) x N, Tx Stop.
+    };
+
+    // Result of transaction.
+    enum class Results : byte
+    {
+      Unknown           = 10, // Unkown before attempting to start a transaction.
+      Pending           = 20, // Transaction waiting to be started.
+      FailedToStart     = 30, // Transaction failed to start.
+      Started           = 41, // Transaction started.
+      ArbitrationLost   = 52, // Arbitration lost during transaction.
+      Timeout           = 62, // Timeout during transaction.
+      Success           = 72  // Transaction completed successfully.
+    };
+
   private:
 
+    // TWSR values.
     enum class Status : byte
     {
       //
-      // Table 22-7. Miscelleaneous States
+      // Table 22-6. Miscelleaneous States
       //
+
       x00_BusError = 0x00,
       xF8_Complete = 0xF8,
 
       //
       // Common status codes:
-      //  Table 22-3. Status Codes for Controller Transmitter Mode
-      //  Table 22-4. Status Codes for Controller Receiver Mode
+      //   Table 22-2. Status Codes for Controller Transmitter Mode
+      //   Table 22-3. Status Codes for Controller Receiver Mode
       //
+
       x08_StartTransmitted = 0x08,
       x10_RepeatedStartTransmitted = 0x10,
       x38_ArbitrationLost = 0x38,
 
       //
-      // Table 22-3. Status Codes for Controller Transmitter Mode
+      // Table 22-2. Status Codes for Controller Transmitter Mode
       //
-      x18_TargetAddressWriteTransmittedAckReceived = 0x18,
-      x20_TargetAddressWriteTransmittedNotAckReceived = 0x20,
-      x28_DataByteTransmittedAckReceived = 0x28,
-      x30_DataByteTransmittedNotAckReceived = 0x30,
+
+      x18_TargetAddressWriteTransmitted_AckReceived = 0x18,
+      x20_TargetAddressWriteTransmitted_NotAckReceived = 0x20,
+      x28_DataByteTransmitted_AckReceived = 0x28,
+      x30_DataByteTransmitted_NotAckReceived = 0x30,
 
       //
-      // Table 22-4. Status Codes for Controller Receiver Mode
+      // Table 22-3. Status Codes for Controller Receiver Mode
       //
-      x40_TargetAddressReadTransmittedAckReceived = 0x40,
-      x48_TargetAddressReadTransmittedNotAckReceived = 0x48,
-      x50_DateByteReceivedAckReturned = 0x50,
-      x58_DataByteReceivedNotAckReturned = 0x58
-    };
 
-  public:
+      x40_TargetAddressReadTransmitted_AckReceived = 0x40,
+      x48_TargetAddressReadTransmitted_NotAckReceived = 0x48,
+      x50_DateByteReceived_AckReturned = 0x50,
+      x58_DataByteReceived_NotAckReturned = 0x58,
 
-    enum class Modes : bool
-    {
-      Continue,  // Returns to the caller after starting the transaction. The TWI ISR continues the transaction to completion asynchronously.
-      Wait       // Conducts the transaction synchronously without the TWI ISR by polling the TWINT flag.
-    };
+      //
+      // Table 22-4. Status Codes for Target Receiver Mode
+      //
 
-  private:
+      x60_OwnTargetAddressWriteReceived_AckReturned = 0x60,
+      x68_ArbitrationLostInTargetAddressAsController_OwnTargetAddressWriteReceived_AckReturned = 0x68,
+      x70_GeneralCallAddressReceived_AckReturned = 0x70,
+      x78_ArbitrationLostInTargetAddressAsController_GeneralCallAddressReceived_AckReturned = 0x78,
+      x80_OwnTargetAddressWrite_DataByteReceived_AckReturned = 0x80,
+      x88_OwnTargetAddressWrite_DataByteReceived_NotAckReturned = 0x88,
+      x90_GeneralCallAddress_DataByteReceived_AckReturned = 0x90,
+      x98_GeneralCallAddress_DataByteReceived_NotAckReturned = 0x98,
+      xA0_StopOrRepeatedStartReceivedAsTarget = 0xA0,
 
-    enum class Sequences : byte
-    {
-      BurstWrite,  // Tx Start, Tx TargetAddress+W, Rx Ack, [Optional: Tx internal address, Rx Ack,] (Tx data and Rx Ack) x N, Tx Stop.
-      BurstRead    // Tx Start, Tx TargetAddress+W, Rx Ack, [Optional: Tx internal address, Rx Ack,] Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
+      //
+      // Table 22-5. Status Codes for Target Transmitter Mode
+      //
+
+      xA8_OwnTargetAddressReadReceived_AckReturned = 0xA8,
+      xB0_ArbitrationLostInTargetAddressAsController_OwnTargetAddressReadReceived_AckReturned = 0xB0,
+      xB8_DataByteTransmitted_AckReceived = 0xB8,
+      xC0_DataByteTransmitted_NotAckReceived = 0xC0,
+      xC8_LastDataByteTransmitted_AckReceived = 0xC8
     };
 
   public:
@@ -115,16 +162,8 @@ class TWI
     // State machine feedback to the caller.
     enum class States : byte
     {
-      Ready,
-      Busy
-    };
-
-    // Result of sequence.
-    enum class Results : byte
-    {
-      Unknown,
-      Timeout,
-      Success
+      Ready,  // State machine is ready to conduct a transaction.
+      Busy    // State machine is busy conducting a transaction.
     };
 
   private:
@@ -139,19 +178,31 @@ class TWI
     //   false: disable them.
     static volatile bool _use_pullups;
 
-    // TWI ISR
-    //   true : Asynchronous (non-blocking) transactions using the TWI ISR.
-    //   false: Synchronous (blocking) transactions by polling the TWINT flag.
-    static volatile bool _use_isr;
+    //
+    // Controller Receiver and Controller Transmitter.
+    //
 
-    static volatile byte *_buffer;               // Pointer to caller's buffer.
-    static volatile uint16_t _count;             // Number of bytes to transfer.
-    static volatile uint16_t _index;             // Index into caller's buffer.
-    static volatile byte _target_address_read;   // Composite 7-bit target address merged with read bit (1).
-    static volatile byte _target_address_write;  // Composite 7-bit target address merged with write bit (0).
-    static volatile uint32_t _internal_address;  // Internal register to read/write.
-    static volatile byte _internal_address_size; // Size of internal register address: 1 to 3 bytes. 0 means there is no internal address.
-    static volatile byte _data_byte;             // data_byte to read/write.
+    static volatile byte *_controller_buffer;       // Pointer to caller's buffer.
+    static volatile uint16_t _controller_count;     // Number of bytes to transfer.
+    static volatile uint16_t _controller_index;     // Index into caller's buffer.
+    static volatile byte _target_address_read;      // Composite 7-bit target address merged with read bit (1).
+    static volatile byte _target_address_write;     // Composite 7-bit target address merged with write bit (0).
+    static volatile uint32_t _internal_address;     // Internal register to read/write.
+    static volatile byte _internal_address_size;    // Size of internal register address: 1 to 3 bytes. 0 means there is no internal address.
+    static byte _data_byte;                         // Data byte to read/write.
+
+    //
+    // Own Target Receiver.
+    //
+
+    static Queue<byte, BYTE_BUFFER_LENGTH> _own_target_rx_buffer;
+
+    //
+    // Own Target Transmitter.
+    //
+
+    static Queue<byte, BYTE_BUFFER_LENGTH> _own_target_tx_buffer;
+
 
     // Timeout to avoid infinite loop if the TWI bus freezes.
     //
@@ -175,6 +226,8 @@ class TWI
     //static uint16_t mext_timeout = 10000u;    // Timeout value in microseconds. Tlow:mext for SMBus.
     static volatile bool _timeout;              // Flag to indicate timeout condition.
 
+    // 0 = Clock frequency does NOT conform to SMBus.
+    // 1 = Clock frequency conforms to SMBus.
     static bool _smbus_mode;
 
   public:
@@ -183,122 +236,123 @@ class TWI
     {
     }
 
+    // Enable TWI.
     void Enable(const uint32_t twi_freq = 400000u, const bool use_pullups = false);//, const uint16_t twi_mext_timeout = 10000u);
 
+    // Disable TWI.
     void Disable();
 
-    void SetOwnTargetAddress(const byte own_target_address, const bool general_call_address);
-
+    // Set TWI clock bus frequency.
     uint32_t SetFrequency(uint32_t twi_freq);
 
+    // Initialise own target receiver and transmitter.
+    void OwnTargetInit(const byte own_target_address, const bool general_call_address);
+
+    // Read a byte from own target receiver buffer.
+    //   Returns false if nothing to read.
+    //   Returns true if it read a byte.
+    bool OwnTargetRead(byte &b);
+
+    // Return number of bytes in own target receiver buffer.
+    byte OwnTargetReadable() const;
+
+    // Write a byte to own target transmitter buffer.
+    bool OwnTargetWrite(byte b);
+
+    // Returns free space in own target transmitter buffer.
+    byte OwnTargetWriteable() const;
+
+    // Get the progress of the transaction.
     States GetState()
     {
-      // Get the progress of the state machine.
-      cli();
-      States s = _state;
-      sei();
-      return s;
+      return _state;
     }
 
+    // Get the result of the transaction.
     Results GetResult()
     {
-      // Get the result of the state machine.
-      cli();
-      Results r = _result;
-      sei();
-      return r;
+      return _result;
     }
 
-    bool IsComplete()
+    // Has the transaction stopped?
+    // i.e. successfully started,
+    // but then stopped either successfully or due to a problem.
+    bool HasStopped()
     {
-      cli();
-      States s = _state;
-      Results r = _result;
-      sei();
-      bool complete = s == States::Ready && (r == Results::Success || r == Results::Timeout);
-      return complete;
+      return static_cast<byte>(_result) & 2;
     }
 
+    // Is the state machine ready?
     bool IsReady()
     {
-      cli();
-      States s = _state;
-      sei();
-      return s == States::Ready;
+      return _state == States::Ready;
     }
 
+    // Did the transaction complete successfully?
     bool IsSuccess()
     {
-      cli();
-      States s = _state;
-      Results r = _result;
-      sei();
-      return s == States::Ready && r == Results::Success;
+      return _result == Results::Success;
     }
 
   public:
 
     //
-    // Transaction functions for burst write and burst read:
+    // Transaction functions for burst read and burst write:
     //   Modes::Continue  Uses the non-blocking TWI ISR (default).
     //   Modes::Wait      Uses a blocking while loop.
     //
 
+    // BurstRead: Tx Start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
+    Results Read(const byte target_address, volatile byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
+    {
+      return Transaction(Sequences::BurstRead, target_address, 0, 0, buffer, count, mode);
+    }
+
+    // BurstRead: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
+    Results Read(const byte target_address, const uint32_t internal_address, const byte internal_address_size, volatile byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
+    {
+      return Transaction(Sequences::BurstRead, target_address, internal_address, internal_address_size, buffer, count, mode);
+    }
+
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
-    bool Write(const byte target_address, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
+    Results Write(const byte target_address, volatile byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
     {
       return Transaction(Sequences::BurstWrite, target_address, 0, 0, buffer, count, mode);
     }
 
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
-    bool Write(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
+    Results Write(const byte target_address, const uint32_t internal_address, const byte internal_address_size, volatile byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
     {
       return Transaction(Sequences::BurstWrite, target_address, internal_address, internal_address_size, buffer, count, mode);
     }
 
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
-    bool Write(const byte target_address, const byte data, const Modes mode = Modes::Continue)
+    Results Write(const byte target_address, const byte data, const Modes mode = Modes::Continue)
     {
-      cli();
       States s = _state;
-      sei();
       if (s == States::Busy)
       {
-        return false;
+        return Results::FailedToStart;
       }
       _data_byte = data;
       return Transaction(Sequences::BurstWrite, target_address, 0, 0, &_data_byte, 1, mode);
     }
 
     // BurstWrite: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, (Tx data and Rx Ack) x N, Tx Stop.
-    bool Write(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte data, const Modes mode = Modes::Continue)
+    Results Write(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte data, const Modes mode = Modes::Continue)
     {
-      cli();
       States s = _state;
-      sei();
       if (s == States::Busy)
       {
-        return false;
+        return Results::FailedToStart;
       }
       _data_byte = data;
       return Transaction(Sequences::BurstWrite, target_address, internal_address, internal_address_size, &_data_byte, 1, mode);
     }
 
-    // BurstRead: Tx Start, Tx TargetAddress+W, Rx Ack, Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
-    bool Read(const byte target_address, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
-    {
-      return Transaction(Sequences::BurstRead, target_address, 0, 0, buffer, count, mode);
-    }
-
-    // BurstRead: Tx Start, Tx TargetAddress+W, Rx Ack, Tx internal address, Rx Ack, Tx Repeated start, Tx TargetAddress+R, Rx Ack, (Rx data and Tx Ack) x (N - 1), Rx data N, Tx Not Ack, Tx Stop.
-    bool Read(const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue)
-    {
-      return Transaction(Sequences::BurstRead, target_address, internal_address, internal_address_size, buffer, count, mode);
-    }
-
   private:
 
-    bool Transaction(const Sequences sequence, const byte target_address, const uint32_t internal_address, const byte internal_address_size, const byte *buffer, const uint16_t count, const Modes mode = Modes::Continue);
+    Results Transaction(const Sequences sequence, const byte target_address, const uint32_t internal_address, const byte internal_address_size, volatile byte *buffer, const uint16_t count, const Modes mode = Modes::Continue);
 
   public:
 
