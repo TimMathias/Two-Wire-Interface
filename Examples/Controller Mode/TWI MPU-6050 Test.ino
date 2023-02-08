@@ -1,4 +1,4 @@
-#include "twi.h"
+#include <twi.h>
 
 const byte MPU_ADDRESS = 0x68;  // I2C address of the MPU-6050. Either 0x68 or 0x69.
 const byte ADO_PIN = 12;        // LOW = 0x68 (default); HIGH = 0x69.
@@ -28,6 +28,7 @@ AccelTempGyroData data;
 
 void setup()
 {
+
   Serial.begin(115200);
 
   Serial.println("\nsetup()\n");
@@ -108,14 +109,14 @@ void loop()
     MPU6050PrintResults();
   }
 
-/**/
+  /**/
 
   //
   // TASK 2: Blink the inbuilt LED.
   //
 
   uint16_t timestamp = millis();
-  const uint16_t LED_BLINK_INTERVAL = 200;
+  const uint16_t LED_BLINK_INTERVAL = 500;
   static uint16_t led_blink_previous_timestamp = timestamp;
   static bool led_state = false;
   if (timestamp - led_blink_previous_timestamp >= LED_BLINK_INTERVAL)
@@ -124,6 +125,8 @@ void loop()
     digitalWrite(LED_BUILTIN, led_state);
     led_blink_previous_timestamp += LED_BLINK_INTERVAL;
   }
+
+  //delay(1000);
 }
 
 void MPU6050PrintResults()
