@@ -32,7 +32,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2021-2022 Timothy Mathias
+// Copyright (c) 2021-2023 Timothy Mathias
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -59,6 +59,16 @@
 #include "queue.h"
 
 #define BYTE_BUFFER_LENGTH 64
+
+#define nDEBUG_TWI
+
+#ifdef DEBUG_TWI
+  #define DebugPrint(...) Serial.print(__VA_ARGS__)
+  #define DebugPrintln(...) Serial.println(__VA_ARGS__)
+#else
+  #define DebugPrint(...)
+  #define DebugPrintln(...)
+#endif
 
 // Two-Wire Interface.
 class TWI
@@ -195,13 +205,13 @@ class TWI
     // Own Target Receiver.
     //
 
-    static Queue<byte, BYTE_BUFFER_LENGTH> _own_target_rx_buffer;
+    static Queue<byte, BYTE_BUFFER_LENGTH> *_own_target_rx_buffer;
 
     //
     // Own Target Transmitter.
     //
 
-    static Queue<byte, BYTE_BUFFER_LENGTH> _own_target_tx_buffer;
+    static Queue<byte, BYTE_BUFFER_LENGTH> *_own_target_tx_buffer;
 
 
     // Timeout to avoid infinite loop if the TWI bus freezes.
@@ -246,7 +256,7 @@ class TWI
     uint32_t SetFrequency(uint32_t twi_freq);
 
     // Initialise own target receiver and transmitter.
-    void OwnTargetInit(const byte own_target_address, const bool general_call_address);
+    void OwnTargetInit(const byte own_target_address, const bool general_call_address, Queue<byte, BYTE_BUFFER_LENGTH> *rx_buffer, Queue<byte, BYTE_BUFFER_LENGTH> *tx_buffer);
 
     // Read a byte from own target receiver buffer.
     //   Returns false if nothing to read.
