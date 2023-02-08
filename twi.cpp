@@ -28,7 +28,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2021-2022 Timothy Mathias
+// Copyright (c) 2021-2023 Timothy Mathias
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,7 @@
 // SOFTWARE.
 //
 
+#include "assert.h"
 #include "twi.h"
 
 TWI::Sequences TWI::_sequence;
@@ -78,13 +79,13 @@ volatile bool TWI::_timeout;                  // Flag to indicate timeout condit
 // Own Target Receiver.
 //
 
-Queue<byte, BYTE_BUFFER_LENGTH> TWI::_own_target_rx_buffer;
+Queue<byte, BYTE_BUFFER_LENGTH> *TWI::_own_target_rx_buffer;
 
 //
 // Own Target Transmitter.
 //
 
-Queue<byte, BYTE_BUFFER_LENGTH> TWI::_own_target_tx_buffer;
+Queue<byte, BYTE_BUFFER_LENGTH> *TWI::_own_target_tx_buffer;
 
 bool TWI::_smbus_mode = false;
 
@@ -96,7 +97,7 @@ inline void WriteTWDR(byte b)
     TWDR = b;
     // if (TWCR & 0x08)
     // {
-    //   Serial.println("WC");
+    //   DebugPrintln("WC");
     // }
   } while (TWCR & (1 << TWWC));
 }
@@ -169,33 +170,35 @@ void TWI::Disable()
   pinMode(SCL, INPUT);
 }
 
-void TWI::OwnTargetInit(const byte own_target_address, const bool general_call_address)
+void TWI::OwnTargetInit(const byte own_target_address, const bool general_call_address, Queue<byte, BYTE_BUFFER_LENGTH> *rx_buffer, Queue<byte, BYTE_BUFFER_LENGTH> *tx_buffer)
 {
+  assert(rx_buffer != nullptr);
+  assert(tx_buffer != nullptr);
+
   TWAR = own_target_address << 1 | general_call_address;
 
-  char buffer[20];
-  sprintf(buffer, "TWAR = 0x%02x", TWAR);
-  Serial.println(buffer);
+  _own_target_rx_buffer = rx_buffer;
+  _own_target_tx_buffer = tx_buffer;
 }
 
 bool TWI::OwnTargetRead(byte &b)
 {
-  return _own_target_rx_buffer.Dequeue(b);
+  return _own_target_rx_buffer->Dequeue(b);
 }
 
 byte TWI::OwnTargetReadable() const
 {
-  return _own_target_rx_buffer.Dequeueable();
+  return _own_target_rx_buffer->Dequeueable();
 }
 
 bool TWI::OwnTargetWrite(byte b)
 {
-  return _own_target_tx_buffer.Enqueue(b);
+  return _own_target_tx_buffer->Enqueue(b);
 }
 
 byte TWI::OwnTargetWriteable() const
 {
-  return _own_target_tx_buffer.Enqueueable();
+  return _own_target_tx_buffer->Enqueueable();
 }
 
 uint32_t TWI::SetFrequency(uint32_t twi_freq)
@@ -293,11 +296,9 @@ TWI::Results TWI::Transaction(const Sequences sequence, const byte target_addres
   }
 
   // Wait for the transaction to complete.
-  //Serial.println("Waiting for transaction to complete...");
+  //DebugPrintln("Waiting for transaction to complete...");
   while (_state == States::Busy) continue;
-  //Serial.println("Transaction completed.");
-
-  TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWEN) | (1 << TWIE);
+  //DebugPrintln("Transaction completed.");
 
   return _result;
 }
@@ -378,7 +379,7 @@ void TWI::ReleaseBus()
 
 void TWI::SendStopFromTwiIsr()
 {
-  //Serial.println("P");
+  DebugPrintln("P");
 
   TWCR = (1 << TWINT) | (1 << TWEA) | (1 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
@@ -388,20 +389,14 @@ void TWI::SendStopFromTwiIsr()
   // Disable WDT interrupt.
   StopWDT();
 
-  //Serial.print("TWCR");
-  //Serial.println(TWCR, 16);
-
   TWCR = (1 << TWEA) | (1 << TWEN) | (1 << TWIE);  // For Target Receiver mode and Target Transmitter mode.
-
-  //Serial.print("TWCR");
-  //Serial.println(TWCR, 16);
 
   _state = States::Ready;
 }
 
 void TWI::HandleTimeout()
 {
-  // Serial.println("TO");
+  DebugPrintln("TO");
 
   // Save bitrate and address settings.
   uint8_t previous_TWBR = TWBR;
@@ -433,26 +428,18 @@ void TWI::HandleTimeout()
 
 void TWI::UpdateStateMachine()
 {
-  //Serial.println("U");
-  //Serial.println(TWSR, 16);
-
-  if (_timeout)
-  {
-    return;
-  }
+  //DebugPrintln("U");
 
   // Test Two-Wire Status Register.
   switch (static_cast<Status>(TWSR & 0xF8))
   {
-    //Serial.println(TWSR, 16);
-
     //
     // Table 22-6. Miscellaneous states
     //
 
     case Status::x00_BusError:
 
-      //Serial.print("x00");
+      DebugPrint("x00");
 
       // Bus error due to an illegal START or STOP condition.
       // No TWDR action. Only the internal hardware is affected,
@@ -466,7 +453,7 @@ void TWI::UpdateStateMachine()
 
     case Status::xF8_Complete:
 
-      //Serial.print("xF8");
+      DebugPrint("xF8");
 
       // No relevant state information available; TWINT = “0”.
       // No TWDR action. No TWCR action.
@@ -486,7 +473,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x08_StartTransmitted:
 
-      //Serial.print("\nx08");
+      DebugPrint("\nx08");
 
       // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
       // Reset timestamp.
@@ -513,7 +500,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x10_RepeatedStartTransmitted:
 
-      //Serial.print("x10");
+      DebugPrint("x10");
 
       // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
       // Reset timestamp.
@@ -533,7 +520,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x38_ArbitrationLost:
 
-      //Serial.print("x38");
+      DebugPrint("x38");
 
       _result = Results::ArbitrationLost;
       StopWDT();
@@ -558,7 +545,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x18_TargetAddressWriteTransmitted_AckReceived:
 
-      //Serial.print("x18");
+      DebugPrint("x18");
 
       // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
       // Reset timestamp.
@@ -595,7 +582,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x20_TargetAddressWriteTransmitted_NotAckReceived:
 
-      //Serial.print("x20");
+      DebugPrint("x20");
 
       // Option 1: Load data byte. Expect data byte ACK or NOT ACK.
       //WriteTWDR(_data_byte);
@@ -619,7 +606,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x28_DataByteTransmitted_AckReceived:
 
-      //Serial.print("x28");
+      DebugPrint("x28");
 
       // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
       // Reset timestamp.
@@ -665,7 +652,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x30_DataByteTransmitted_NotAckReceived:
 
-      //Serial.print("x30");
+      DebugPrint("x30");
 
       // Option 1: Load data byte. Expect data byte ACK or NOT ACK.
       //WriteTWDR(_data_byte);
@@ -693,7 +680,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x40_TargetAddressReadTransmitted_AckReceived:
 
-      //Serial.print("x40");
+      DebugPrint("x40");
 
       // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
       // Reset timestamp.
@@ -718,7 +705,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x48_TargetAddressReadTransmitted_NotAckReceived:
 
-      //Serial.print("x48");
+      DebugPrint("x48");
 
       // Option 1: No TWDR action. Repeated START will be transmitted.
       //TWCR = 0b10100101;
@@ -737,9 +724,9 @@ void TWI::UpdateStateMachine()
 
     case Status::x50_DateByteReceived_AckReturned:
 
-      //Serial.print("x50");
-      //Serial.print((char)TWDR);
-      //Serial.print(" ");
+      DebugPrint("x50");
+      //DebugPrint((char)TWDR);
+      //DebugPrint(" ");
 
       // SMBus datasheet §4.2.3 Controller device clock extension definitions and conditions
       // Reset timestamp.
@@ -764,7 +751,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x58_DataByteReceived_NotAckReturned:
 
-      //Serial.print("x58");
+      DebugPrint("x58");
 
       _controller_buffer[_controller_index] = TWDR;
 
@@ -791,20 +778,22 @@ void TWI::UpdateStateMachine()
 
     case Status::x60_OwnTargetAddressWriteReceived_AckReturned:
 
-      //Serial.print("x60");
+      DebugPrint("x60");
 
       _state = States::Busy;
       StartWDT();
 
-      if (_own_target_rx_buffer.Enqueueable())
+      if (_own_target_rx_buffer->Enqueueable())
       {
-        //Serial.print("W");
+        //DebugPrint("W");
+
         // Option 2: No TWDR action. Data byte will be received and ACK will be returned.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
       else
       {
-        //Serial.print("nW");
+        //DebugPrint("nW");
+
         // Option 1: No TWDR action. Data byte will be received and NOT ACK will be returned.
         TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
@@ -813,21 +802,23 @@ void TWI::UpdateStateMachine()
 
     case Status::x68_ArbitrationLostInTargetAddressAsController_OwnTargetAddressWriteReceived_AckReturned:
 
-      //Serial.print("x68");
+      DebugPrint("x68");
 
       _state = States::Busy;
       _result = Results::ArbitrationLost;
       ResetWDT();
 
-      if (_own_target_rx_buffer.Enqueueable())
+      if (_own_target_rx_buffer->Enqueueable())
       {
-        //Serial.print("W");
+        //DebugPrint("W");
+
         // Option 2: No TWDR action. Data byte will be received and ACK will be returned.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
       else
       {
-        //Serial.print("nW");
+        //DebugPrint("nW");
+
         // Option 1: No TWDR action. Data byte will be received and NOT ACK will be returned.
         TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
@@ -836,20 +827,22 @@ void TWI::UpdateStateMachine()
 
     case Status::x70_GeneralCallAddressReceived_AckReturned:
 
-      //Serial.print("x70");
+      DebugPrint("x70");
 
       _state = States::Busy;
       StartWDT();
 
-      if (_own_target_rx_buffer.Enqueueable())
+      if (_own_target_rx_buffer->Enqueueable())
       {
-        //Serial.print("W");
+        //DebugPrint("W");
+
         // Option 2: No TWDR action. Data byte will be received and ACK will be returned.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
       else
       {
-        //Serial.print("nW");
+        //DebugPrint("nW");
+
         // Option 1: No TWDR action. Data byte will be received and NOT ACK will be returned.
         TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
@@ -858,21 +851,23 @@ void TWI::UpdateStateMachine()
 
     case Status::x78_ArbitrationLostInTargetAddressAsController_GeneralCallAddressReceived_AckReturned:
 
-      //Serial.print("x78");
+      DebugPrint("x78");
 
       _state = States::Busy;
       _result = Results::ArbitrationLost;
       ResetWDT();
 
-      if (_own_target_rx_buffer.Enqueueable())
+      if (_own_target_rx_buffer->Enqueueable())
       {
-        //Serial.print("W");
+        //DebugPrint("W");
+
         // Option 2: No TWDR action. Data byte will be received and ACK will be returned.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
       else
       {
-        //Serial.print("nW");
+        //DebugPrint("nW");
+
         // Option 1: No TWDR action. Data byte will be received and NOT ACK will be returned.
         TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
@@ -881,20 +876,22 @@ void TWI::UpdateStateMachine()
 
     case Status::x80_OwnTargetAddressWrite_DataByteReceived_AckReturned:
 
-      //Serial.print("x80");
+      DebugPrint("x80");
 
       _state = States::Busy;
       ResetWDT();
 
-      if (_own_target_rx_buffer.Enqueue(TWDR))
+      if (_own_target_rx_buffer->Enqueue(TWDR) && _own_target_rx_buffer->Enqueueable())
       {
-        //Serial.print("W");
+        //DebugPrint("W");
+
         // Option 2: Read data byte. Data byte will be received and ACK will be returned.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
       else
       {
-        //Serial.print("nW");
+        //DebugPrint("nW");
+
         // Option 1: Read data byte. Data byte will be received and NOT ACK will be returned.
         TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
       }
@@ -903,7 +900,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x88_OwnTargetAddressWrite_DataByteReceived_NotAckReturned:
 
-      //Serial.print("x88");
+      DebugPrint("x88");
 
       _state = States::Ready;
       StopWDT();
@@ -912,7 +909,7 @@ void TWI::UpdateStateMachine()
       //TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 2: Read data byte. Switched to the not addressed Target mode; own SLA will be recognized; GCA will be recognized if TWGCE = “1”.
-      _own_target_rx_buffer.Enqueue(TWDR);
+      _own_target_rx_buffer->Enqueue(TWDR);
       TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 3: Read data byte. Switched to the not addressed Target mode; no recognition of own SLA or GCA; a START condition will be transmitted when the bus becomes free.
@@ -927,12 +924,12 @@ void TWI::UpdateStateMachine()
 
     case Status::x90_GeneralCallAddress_DataByteReceived_AckReturned:
 
-      //Serial.print("x90");
+      DebugPrint("x90");
 
       _state = States::Busy;
       ResetWDT();
 
-      if (_own_target_rx_buffer.Enqueue(TWDR))
+      if (_own_target_rx_buffer->Enqueue(TWDR) && _own_target_rx_buffer->Enqueueable())
       {
         // Option 2: Read data byte. Data byte will be received and ACK will be returned.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
@@ -947,7 +944,7 @@ void TWI::UpdateStateMachine()
 
     case Status::x98_GeneralCallAddress_DataByteReceived_NotAckReturned:
 
-      //Serial.print("x98");
+      DebugPrint("x98");
 
       _state = States::Ready;
       StopWDT();
@@ -956,7 +953,7 @@ void TWI::UpdateStateMachine()
       //TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 2: Read data byte. Switched to the not addressed Target mode; own SLA will be recognized; GCA will be recognized if TWGCE = “1”.
-      _own_target_rx_buffer.Enqueue(TWDR);
+      _own_target_rx_buffer->Enqueue(TWDR);
       TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 3: Read data byte. Switched to the not addressed Target mode; no recognition of own SLA or GCA; a START condition will be transmitted when the bus becomes free.
@@ -971,7 +968,7 @@ void TWI::UpdateStateMachine()
 
     case Status::xA0_StopOrRepeatedStartReceivedAsTarget:
 
-      //Serial.print("xA0");
+      DebugPrint("xA0");
 
       _state = States::Ready;
       StopWDT();
@@ -998,16 +995,16 @@ void TWI::UpdateStateMachine()
 
     case Status::xA8_OwnTargetAddressReadReceived_AckReturned:
     {
-      //Serial.print("xA8");
+      DebugPrint("\nxA8");
 
       _state = States::Busy;
       StartWDT();
 
       byte b = 0;
-      _own_target_tx_buffer.Dequeue(b);
+      _own_target_tx_buffer->Dequeue(b);
       WriteTWDR(b);
 
-      if (_own_target_tx_buffer.Dequeueable())
+      if (_own_target_tx_buffer->Dequeueable())
       {
         // Option 2: Load data byte. Data byte will be transmitted and ACK should be received.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
@@ -1022,17 +1019,17 @@ void TWI::UpdateStateMachine()
     }
     case Status::xB0_ArbitrationLostInTargetAddressAsController_OwnTargetAddressReadReceived_AckReturned:
     {
-      //Serial.print("xB0");
+      DebugPrint("\nxB0");
 
       _state = States::Busy;
       _result = Results::ArbitrationLost;
       ResetWDT();
 
       byte b = 0;
-      _own_target_tx_buffer.Dequeue(b);
+      _own_target_tx_buffer->Dequeue(b);
       WriteTWDR(b);
 
-      if (_own_target_tx_buffer.Dequeueable())
+      if (_own_target_tx_buffer->Dequeueable())
       {
         // Option 2: Load data byte. Data byte will be transmitted and ACK should be received.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
@@ -1047,17 +1044,17 @@ void TWI::UpdateStateMachine()
     }
     case Status::xB8_DataByteTransmitted_AckReceived:
     {
-      //Serial.print("xB8");
+      DebugPrint("xB8");
 
       _state = States::Busy;
       ResetWDT();
 
       byte b = 0;
-      _own_target_tx_buffer.Dequeue(b);
+      _own_target_tx_buffer->Dequeue(b);
       WriteTWDR(b);
-      //Serial.print((char)b);
+      //DebugPrint((char)b);
 
-      if (_own_target_tx_buffer.Dequeueable())
+      if (_own_target_tx_buffer->Dequeueable())
       {
         // Option 2: Load data byte. Data byte will be transmitted and ACK should be received.
         TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
@@ -1072,17 +1069,16 @@ void TWI::UpdateStateMachine()
     }
     case Status::xC0_DataByteTransmitted_NotAckReceived:
 
-      //Serial.print("xC0");
+      DebugPrint("xC0");
 
       _state = States::Ready;
       StopWDT();
-      TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 1: No TWDR action. Switched to the not addressed Target mode; no recognition of own SLA or GCA.
       //TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 2: No TWDR action. Switched to the not addressed Target mode; own SLA will be recognized; GCA will be recognized if TWGCE = “1”.
-      // TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
+      TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 3: No TWDR action. Switched to the not addressed Target mode; no recognition of own SLA or GCA; a START condition will be transmitted when the bus becomes free.
       //TWCR = (1 << TWINT) | (0 << TWEA) | (1 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
@@ -1094,17 +1090,16 @@ void TWI::UpdateStateMachine()
 
     case Status::xC8_LastDataByteTransmitted_AckReceived:
 
-      //Serial.print("xC8");
+      DebugPrint("xC8");
 
       _state = States::Ready;
       StopWDT();
-      TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 1: No TWDR action. Switched to the not addressed Target mode; no recognition of own SLA or GCA.
       //TWCR = (1 << TWINT) | (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 2: No TWDR action. Switched to the not addressed Target mode; own SLA will be recognized; GCA will be recognized if TWGCE = “1”.
-      // TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
+      TWCR = (1 << TWINT) | (1 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
 
       // Option 3: No TWDR action. Switched to the not addressed Target mode; no recognition of own SLA or GCA; a START condition will be transmitted when the bus becomes free.
       //TWCR = (1 << TWINT) | (0 << TWEA) | (1 << TWSTA) | (0 << TWSTO) | (1 << TWEN) | (1 << TWIE);
