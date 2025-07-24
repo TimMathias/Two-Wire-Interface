@@ -93,13 +93,13 @@ class TWI
     // Result of transaction.
     enum class Results : byte
     {
-      Unknown           = 10, // Unkown before attempting to start a transaction.
-      Pending           = 20, // Transaction waiting to be started.
-      FailedToStart     = 30, // Transaction failed to start.
-      Started           = 41, // Transaction started.
-      ArbitrationLost   = 52, // Arbitration lost during transaction.
-      Timeout           = 62, // Timeout during transaction.
-      Success           = 72  // Transaction completed successfully.
+      Unknown           = 0x10, // Unkown before attempting to start a transaction.
+      Pending           = 0x20, // Transaction waiting to be started.
+      FailedToStart     = 0x30, // Transaction failed to start.
+      Started           = 0x41, // Transaction started.
+      ArbitrationLost   = 0x52, // Arbitration lost during transaction.
+      Timeout           = 0x62, // Timeout during transaction.
+      Success           = 0x72  // Transaction completed successfully.
     };
 
   private:
